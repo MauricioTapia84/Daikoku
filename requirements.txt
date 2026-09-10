@@ -1,0 +1,6 @@
+markitdown
+sentence-transformers
+chromadb
+gradio
+mistralai
+requests
