@@ -1,6 +1,11 @@
 markitdown
+pypdf
 sentence-transformers
 chromadb
 gradio
 mistralai
 requests
+langchain
+langchain-openai
+langchain-core
+langgraph
