@@ -1,6 +1,14 @@
+import re
 from typing import Iterable, List, Sequence
 
 from .embeddings import cosine_similarity, embed_text
+
+
+def _normalize_tokens(text: str) -> set[str]:
+    return {
+        token for token in re.findall(r"[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]+", (text or "").lower())
+        if len(token) > 2
+    }
 
 
 class VectorStore:
@@ -10,10 +18,13 @@ class VectorStore:
             self.add_documents(documents)
 
     def add_document(self, text: str, metadata: dict | None = None):
+        cleaned_text = str(text or "").strip()
+        if not cleaned_text:
+            return
         self.documents.append({
-            "text": text,
-            "metadata": metadata or {},
-            "embedding": embed_text(text),
+            "text": cleaned_text,
+            "metadata": dict(metadata or {}),
+            "embedding": embed_text(cleaned_text),
         })
 
     def add_documents(self, documents: Iterable[str]):
@@ -26,20 +37,36 @@ class VectorStore:
                 metadata = {}
             self.add_document(text, metadata)
 
-    def search(self, query: str, top_k: int = 3) -> list[dict]:
-        if not self.documents:
+    def search(self, query: str, top_k: int = 3, min_score: float = 0.0) -> list[dict]:
+        if not query or not str(query).strip() or not self.documents:
             return []
 
-        query_embedding = embed_text(query)
-        scored = []
+        query_text = str(query).strip()
+        query_tokens = _normalize_tokens(query_text)
+        query_embedding = embed_text(query_text)
+        scored: list[dict] = []
+
         for index, document in enumerate(self.documents):
+            text = str(document.get("text", "") or "")
+            metadata = dict(document.get("metadata", {}) or {})
             score = cosine_similarity(query_embedding, document["embedding"])
+            overlap = 0.0
+            if query_tokens:
+                text_tokens = _normalize_tokens(text)
+                if text_tokens:
+                    overlap = len(query_tokens & text_tokens) / max(len(query_tokens), 1)
+            relevance = max(score, overlap)
             scored.append({
                 "index": index,
-                "text": document["text"],
-                "metadata": document["metadata"],
-                "score": score,
+                "text": text,
+                "metadata": metadata,
+                "score": relevance,
             })
 
         scored.sort(key=lambda item: item["score"], reverse=True)
-        return scored[:top_k]
+        filtered = [item for item in scored if item["score"] >= min_score]
+        if not filtered and min_score > 0:
+            return []
+        if not filtered:
+            filtered = scored
+        return filtered[:top_k]

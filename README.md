@@ -125,6 +125,95 @@ El nodo `finalizer`:
 
 ---
 
+## Módulos principales del agente
+
+El agente está dividido en cuatro bloques funcionales principales:
+
+- `router`: toma la decisión inicial sobre si la consulta debe resolverse con contexto local o externo.
+- `retrieve_context`: busca fragments relevantes en el corpus del usuario usando similitud semántica.
+- `retrieve_external`: consulta una fuente externa, normalmente Wikipedia, para complementar la respuesta cuando la pregunta es conceptual o no está cubierta por el material local.
+- `finalizer`: compone la respuesta final, persiste el historial y prepara la salida para el usuario.
+
+Además, el sistema dispone de:
+
+- `VectorStore`: índice local con embeddings y metadata
+- `AgentState`: estructura formal que valida el flujo entre nodos
+- `session_memory`: historial persistente por `session_id`
+- `generate_answer`: función que compone la respuesta final con contexto recuperado
+
+---
+
+## Conceptos clave del sistema
+
+### ¿Qué es un RAG?
+
+Un RAG (Retrieval-Augmented Generation) es un patrón de IA en el que el modelo no responde solo desde su conocimiento interno, sino que primero recupera información relevante de una fuente externa y luego genera la respuesta utilizando esa evidencia.
+
+En Daikoku, esto se usa para:
+
+- responder con base documental real
+- reducir alucinaciones
+- aprovechar el material del usuario y, si hace falta, información externa
+- mantener la respuesta anclada a fuentes verificables
+
+### ¿Qué es un embedding?
+
+Un embedding es una representación numérica de un texto que captura su significado en un espacio vectorial. Dos textos con significados parecidos suelen estar cerca en ese espacio.
+
+En este proyecto, los embeddings sirven para:
+
+- convertir preguntas y chunks en vectores
+- comparar consultas con documentos almacenados
+- recuperar los fragmentos más similares por semántica, no solo por palabras exactas
+
+### ¿Qué es el router y por qué es importante?
+
+El router es el nodo encargado de decidir el camino que seguirá la consulta dentro del grafo. Es importante porque evita que el agente haga siempre lo mismo y permite separar dos tipos de evidencia:
+
+- local: documentos cargados por el usuario
+- externo: fuentes complementarias como Wikipedia
+
+Esto mejora la calidad, la trazabilidad y la comprensión del flujo del agente.
+
+### ¿Qué es la memoria del agente?
+
+La memoria del agente permite mantener el contexto de la conversación entre interacciones. En este proyecto, la memoria se guarda por sesión usando un identificador único (`session_id`) y se mantiene persistente en disco en la carpeta `data/sessions`.
+
+Su objetivo es:
+
+- conservar el hilo de la conversación
+- reutilizar contexto histórico
+- evitar repetir preguntas sin tener en cuenta la interacción previa
+- limitar el historial para que no crezca indefinidamente
+
+### ¿Qué es la herramienta externa y por qué se usa?
+
+La herramienta externa es la consulta a Wikipedia. Se usa cuando la consulta es conceptual, muy general o no tiene suficiente cobertura en el corpus local. Esto permite enriquecer la respuesta con definiciones o explicaciones generales sin depender únicamente del material subido por el usuario.
+
+----
+
+## Diagrama del flujo general del sistema
+
+```mermaid
+flowchart TD
+    A[Usuario pregunta] --> B[router]
+    B --> C{¿Hay contexto local relevante?}
+    C -->|Sí| D[retrieve_context]
+    C -->|No| E[retrieve_external]
+    D --> F[finalizer]
+    E --> F
+    F --> G[Respuesta final + memoria persistente]
+```
+
+El flujo puede resumirse así:
+
+1. el usuario hace una pregunta
+2. el `router` decide si la respuesta requiere contexto local, externo o ambos
+3. la capa de recuperación obtiene los documentos o fragmentos más relevantes
+4. el `finalizer` genera la respuesta final y guarda el historial en sesión
+
+---
+
 ## Estructura del repositorio
 
 ```text
@@ -156,6 +245,31 @@ Daikoku/
 - `src/generacion.py`: construcción de respuesta final
 - `src/ingesta.py`: preparación y extracción de texto
 - `tests/test_daikoku.py`: validaciones funcionales del proyecto
+
+---
+
+## Validación y pruebas
+
+La validación del sistema se realiza con pruebas unitarias y de integración automatizadas en `tests/test_daikoku.py`. Estas pruebas cubren el flujo completo del agente y sirven como evidencia de que cada componente funciona de forma consistente en condiciones reales.
+
+### Casos validados
+
+- Lógica del router: comprueba que la decisión de ruta siga una política clara entre contexto local y externo.
+- Comportamiento sin contexto local: confirma que el agente responde sin romper el flujo cuando no hay documentos indexados.
+- Comportamiento con contexto local: valida que la recuperación semántica devuelve contenido útil y genera una respuesta basada en el corpus del usuario.
+- Comportamiento con contexto externo: comprueba que la búsqueda externa es accesible y produce resultados normalizados para complementar la respuesta.
+- Memoria por sesión: comprueba que el historial se persiste y se mantiene acotado por sesión.
+- Repetición y continuidad: asegura que la respuesta repetida y la conversación histórica se comportan de forma coherente.
+- Caso de error o respuesta vacía: valida que la entrada vacía o ambigua devuelve un mensaje útil y no rompe la ejecución.
+- Documentación de pruebas: cada caso se mantiene en el informe y en los tests para dejar trazabilidad del comportamiento del sistema.
+
+Estas comprobaciones se ejecutan con:
+
+```bash
+python -m unittest tests.test_daikoku -q
+```
+
+> El proyecto mantiene una política de validación por evidencia: se considera correcta una funcionalidad cuando la prueba real del flujo pasa y no rompe la ejecución del agente.
 
 ---
 

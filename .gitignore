@@ -44,6 +44,7 @@ htmlcov/
 # Generated local data
 *.sqlite3
 *.db
+data/
 
 # Gradio / local runtime artifacts
 .gradio/
