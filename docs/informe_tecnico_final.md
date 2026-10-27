@@ -2,228 +2,212 @@
 
 ## 1. Resumen ejecutivo
 
-Daikoku es un asistente académico basado en arquitectura RAG (Retrieval-Augmented Generation) que combina recuperación local de documentos, contexto externo y memoria de sesión para responder preguntas de forma más precisa y contextualizada. El sistema está pensado para ayudar a estudiantes, docentes y usuarios generales a consultar material académico sin necesidad de leer manualmente documentos extensos.
+Daikoku es un asistente académico orientado a responder preguntas sobre documentos propios del usuario mediante un flujo RAG con recuperación semántica, memoria por sesión y orquestación explícita. El sistema combina un agente con LangGraph, un backend vectorial local y una capa de recuperación externa para complementar la evidencia cuando el material del usuario no cubre la consulta.
 
-El proyecto se construye sobre una estructura modular que separa responsabilidades: ingreso y preparación de documentos, almacenamiento semántico, recuperación por similitud, enrutamiento del flujo, memoria persistente y generación final de respuestas. Además, incluye validaciones formales del estado del agente, manejo de errores y mecanismos de continuidad de conversación por sesión.
+En su estado actual, el proyecto está diseñado como un asistente académico realista para apoyar la consulta, comparación y comprensión de textos, apuntes, resúmenes y documentación universitaria. El valor del sistema no radica solo en responder preguntas, sino en hacerlo con evidencia documental, contexto útil y trazabilidad del proceso.
 
-La propuesta no se limita a un chatbot básico: incorpora un diseño de agente con grafo de flujo (LangGraph), búsqueda semántica con embeddings y lógica de enrutamiento para decidir cuándo es necesario recuperar información local o externa. Este enfoque logra una respuesta más útil, más trazable y más cercana a una aplicación real de sistemas de IA aplicada a documentos.
+La solución actual incorpora:
+
+- validación formal del estado del agente
+- tool layer explícito
+- router, retrieval y finalizer con responsabilidades bien definidas
+- memoria por sesión y resumen persistente
+- backend vectorial basado en FAISS con fallback seguro
+- observabilidad por evento y trazas por ejecución
+- benchmark comparativo para recuperación semántica
+- respuestas finales con evidencia documental explícita
+
+Esto acerca el proyecto a un patrón de agente más maduro, con arquitectura clara, rigor técnico y orientación académica.
 
 ---
 
-## 2. Motivación y contexto
+## 2. Motivación y problema a resolver
 
-En entornos académicos y profesionales, la información suele estar dispersa en archivos, apuntes, PDFs, resúmenes y material docente. La dificultad no es solo encontrar contenido, sino identificar la parte relevante para una pregunta concreta y responder con contexto adecuado.
+Los estudiantes, docentes y usuarios académicos trabajan frecuentemente con colecciones grandes y heterogéneas de documentos: apuntes, PDF, artículos, resúmenes y material docente. El problema no es solo localizar información, sino identificar la parte relevante que responde la pregunta concreta y hacerlo con contexto útil.
 
-Un asistente basado simplemente en un modelo de lenguaje puede responder de manera útil, pero suele carecer de anchoring documental. Esto puede provocar que genere respuestas que parezcan correctas pero no estén basadas en el material real del usuario.
-
-Daikoku resuelve esta limitación recuperando primero el contenido relevante del corpus del usuario y, cuando hace falta, complementando con información externa. De ese modo, la respuesta no se apoya solo en el conocimiento general del modelo, sino también en evidencia documentada.
+Un modelo de lenguaje aislado puede responder de forma plausible, pero no garantiza que la información provenga del material del usuario. Daikoku corrige esa limitación al recuperar primero fragmentos del corpus local y, cuando la consulta lo requiere, añadir contexto externo de apoyo conceptual o definicional.
 
 ---
 
 ## 3. Objetivos del proyecto
 
-Los objetivos del proyecto son los siguientes:
-
-1. Construir un asistente académico funcional para consultar documentos.
-2. Recuperar información relevante por similitud semántica en vez de por palabras exactas.
-3. Separar claramente los roles de recuperación local, recuperación externa y finalización.
-4. Mantener memoria por sesión para continuidad de conversación.
-5. Validar el flujo del agente y manejar errores sin bloquear la ejecución.
-6. Documentar el proyecto con un enfoque técnico y comprensible para distintos perfiles.
+1. Construir un asistente académico funcional para documentos propios del usuario.
+2. Recuperar información relevante por similitud semántica.
+3. Separar responsabilidades claras entre router, retrieval, memoria, generación y observabilidad.
+4. Mantener memoria por sesión para continuidad de la conversación.
+5. Mejorar la robustez frente a preguntas vacías, ambiguas o sin contexto local.
+6. Validar y documentar el flujo del agente con enfoque técnico y académico.
 
 ---
 
-## 4. Arquitectura general del sistema
+## 4. Arquitectura del sistema
 
-El sistema se compone de varias capas interconectadas:
+El sistema se organiza en capas funcionales.
 
-### 4.1. Capa de entrada y preparación de documentos
-La primera etapa trata de transformar el contenido bruto en información utilizable para el sistema. En esta parte se realiza:
+### 4.1. Entrada y preparación del contenido
+La capa inicial procesa y normaliza los documentos para que puedan usarse de manera reproducible. Esto incluye limpieza de texto, normalización y fragmentación del contenido.
 
-- lectura de archivos de texto o documentos compatibles
-- limpieza y normalización de texto
-- partición por fragmentos o chunks
-- preparación del contenido para su indexación
+### 4.2. Representación semántica
+Los textos se convierten en vectores mediante embeddings, lo que permite comparar queries con documentos por similitud semántica, no solo por coincidencia léxica.
 
-### 4.2. Capa de embeddings y similitud
-A continuación, el texto se representa mediante embeddings. Los embeddings son vectores numéricos que capturan el significado del contenido. Cuando el usuario pregunta algo, también se convierte esa pregunta en un vector y se compara con los vectores del corpus para recuperar los fragmentos más cercanos.
+### 4.3. Vector store
+La capa vectorial usa FAISS cuando está disponible y cuenta con un fallback seguro en memoria. Esto mejora la estabilidad del sistema y evita depender de una sola estrategia de recuperación.
 
-### 4.3. Capa de almacenamiento vectorial
-El sistema guarda los textos y sus embeddings para recuperar información relevante. Esta capa se encarga de mantener una “base local” de contexto semántico y devolver resultados ordenados por relevancia.
+### 4.4. Tool layer
+El agente incluye una capa de herramientas explícitas:
 
-### 4.4. Capa de orquestación con LangGraph
-El agente no responde en una sola fase. El flujo se estructura en nodos con responsabilidades claras:
+- buscar_documentos
+- buscar_en_wikipedia
+- resolver_ambigüedad
+- resumir_historial
 
-- router: decide si la consulta necesita contexto local, externo o ambos
-- retrieve_context: obtiene evidencia del corpus local
-- retrieve_external: consulta fuentes externas para complementar la respuesta
+Esto hace más clara la separación entre decisión del agente y ejecución concreta de una acción.
+
+### 4.5. Orquestación con LangGraph
+La orquestación sigue un flujo claro:
+
+- router: decide si la consulta requiere contexto local o externo
+- tool layer: determina la herramienta adecuada
+- retrieve_context: recupera evidencia de documentos locales
+- retrieve_external: consulta contexto externo complementario
+- memory: recupera y resume la sesión
+- observability: registra el estado del flujo
 - finalizer: genera la respuesta final y persiste la memoria
 
-Este enfoque hace al sistema más explicable, más robusto y más fácil de modificar.
-
-### 4.5. Capa de memoria y persistencia
-La conversación no se pierde entre turnos. El agente guarda el historial por sesión usando un identificador único. Esto permite mantener continuidad, responder preguntas de seguimiento y resumir información antigua si el historial crece demasiado.
-
-### 4.6. Capa final de generación
-La respuesta final se construye con el contexto recuperado. La idea es que el sistema responda con base en evidencia y no solo en la intuición general del modelo.
+Este diseño aumenta la trazabilidad y hace al agente más cercano a un sistema con lógica de producción.
 
 ---
 
-## 5. Qué es un RAG y por qué se usa en este proyecto
+## 5. Memoria, trazabilidad y observabilidad
 
-RAG significa Retrieval-Augmented Generation, o generación aumentada por recuperación. Es una técnica en la que un modelo de IA primero busca información útil en un conjunto de datos o documentos, y luego utiliza esa información para responder.
+El proyecto incorpora memoria por sesión con resumen persistente para mantener el hilo de la conversación sin saturar el contexto. La gestión de memoria incluye:
 
-### ¿Por qué es útil?
-- reduce respuestas inventadas
-- mejora la base documental de la respuesta
-- permite usar contenido específico del usuario
-- hace más fácil integrar fuentes internas y externas
+- historial corto por sesión
+- deduplicación de mensajes repetidos
+- resumen persistente
+- límite de longitud para mantener la conversación estable
 
-### Aplicación en Daikoku
-En este proyecto, el usuario puede cargar documentos y luego preguntar sobre ellos. El agente recupera fragmentos relevantes del material del usuario y los usa para responder. Cuando la pregunta es conceptual o requiere apoyo adicional, también consulta una fuente externa como Wikipedia. Este diseño combina dos fuentes de conocimiento: la propia del usuario y la complementaria del entorno externo.
+La capa de observabilidad registra eventos clave del flujo, con identificadores por ejecución (`trace_id`) y por sesión (`session_id`). Esto permite responder preguntas como:
 
----
+- ¿qué ruta eligió el router?
+- ¿qué herramienta se ejecutó?
+- ¿qué contexto local o externo se usó?
+- ¿cuál fue el backend vectorial activo?
+- ¿qué longitud tuvo la respuesta final?
 
-## 6. Qué es un embedding y por qué es importante
-
-Un embedding es una representación matemática de un texto en un espacio vectorial. En lugar de depender únicamente de coincidencias textual exactas, el embedding intenta capturar el significado del contenido.
-
-Por ejemplo, dos frases relacionadas sobre el mismo concepto estarán cercanas en ese espacio, aunque no compartan las mismas palabras exactas.
-
-### Relación con la recuperación
-Cuando el usuario hace una pregunta, esta pregunta también se convierte en un vector. Después, el sistema compara ese vector con los embeddings de los documentos del corpus y ordena los resultados por cercanía semántica. Así se obtiene contenido relevante aunque no haya coincidencias exactas de palabras.
-
-### Valor práctico
-Esto hace que la búsqueda sea mucho más inteligente que una búsqueda literal por texto. En contextos académicos, donde los conceptos pueden expresarse con sinónimos o reformulaciones, esta capacidad es esencial.
+Estas trazas mejoran la diagnóstica del sistema y permiten evaluarlo con mayor rigor.
 
 ---
 
-## 7. ¿Qué hace el router y por qué es importante?
+## 6. Recuperación local y externa
 
-El router es la parte del sistema que decide por qué camino debe avanzar la consulta dentro del grafo del agente.
+### Recuperación local
+La capa local usa similitud semántica para recuperar fragmentos relevantes del corpus del usuario. Esta es la base principal del sistema, porque la respuesta final debe fundamentarse en información contenida en los documentos del usuario.
 
-### Función principal
-El router analiza la intención de la consulta y decide si es más apropiado:
+### Recuperación externa
+Cuando la consulta es conceptual, general o no está cubierta por el material local, el agente usa una fuente externa complementaria, en este caso Wikipedia. Se aplica filtrado de relevancia para evitar introducir contexto genérico o poco útil.
 
-- usar contexto local del corpus del usuario
-- usar contexto externo como información complementaria
-- combinar ambos tipos de contexto
-
-### ¿Por qué es importante?
-Porque no todas las preguntas tienen la misma naturaleza. Una pregunta sobre un documento específico requiere evidencia local. Una pregunta conceptual puede requerir información general. El router hace que el sistema sea más eficiente, más transparente y más adaptable.
-
-En este proyecto, el router está integrado dentro de la lógica de LangGraph, lo que permite que cada decisión esté formalizada y validada antes de continuar con la siguiente etapa.
+La combinación de recuperación local y externa mejora la calidad del sistema ante distintos tipos de consulta.
 
 ---
 
-## 8. ¿Qué es la memoria del agente?
+## 7. Dominio y caso de uso
 
-La memoria del agente permite conservar el contexto de la conversación y mantener continuidad entre varias interacciones. En lugar de tratar cada pregunta como si fuera independiente, el sistema recuerda qué se ha preguntado antes y utiliza ese historial para responder mejor.
+El proyecto se especializa como asistente académico para documentos universitarios y de estudio. Esto es importante porque define mejor su utilidad y evita presentarlo como un sistema totalmente generalista.
 
-### Tipos de memoria
-En este proyecto se trabaja con:
+El caso de uso principal es:
 
-- memoria de sesión: persistente durante la misma conversación
-- historial acotado: limitado para no saturar la memoria
-- resumen del historial antiguo: para ahorrar espacio y conservar contexto relevante
+- consulta sobre apuntes, resúmenes y material universitario
+- apoyo a la comprensión de contenidos
+- recuperación semántica de documentos estudiados
+- respuesta contextualizada con evidencia documental
 
-### ¿Por qué importa?
-La memoria ayuda a responder conversaciones del tipo:
-
-- “¿Puedes repetirlo?”
-- “¿Qué te acabo de preguntar?”
-- “Quiero continuar con ese tema”
-
-Esto hace que la experiencia del usuario sea más natural y más útil.
+Esa especialización mejora la claridad del proyecto y su alineación con el caso de uso académico evaluado por el profesor.
 
 ---
 
-## 9. ¿Qué es la herramienta externa y por qué se usa?
+## 8. Validación, robustez y pruebas
 
-La herramienta externa del proyecto es la consulta a Wikipedia. Se usa para complementar la recuperación local cuando la información necesaria no está presente en los documentos cargados por el usuario.
+El agente incorpora validación del estado para prevenir errores de flujo y sostiene un comportamiento más robusto frente a casos complejos:
 
-### Ventajas
-- aporta definiciones o contexto general
-- ayuda en preguntas conceptuales
-- sirve como respaldo cuando el corpus local es insuficiente
+- preguntas vacías
+- consultas ambiguas
+- documentos no procesables
+- resultados sin contexto relevante
+- fallos de conexión a la API externa
+- memoria saturada o historial repetitivo
+- respuestas sin evidencia suficiente
 
-### Limitaciones y control
-La herramienta externa también se controla para evitar saturar la respuesta final con mucho contenido irrelevante. Se limitan los resultados y se normalizan los textos para mantener un contexto claro y útil. Además, si la conexión falla, el sistema responde sin romper el flujo.
-
----
-
-## 10. Flujo del sistema paso a paso
-
-El flujo general del proyecto puede describirse así:
-
-1. El usuario escribe una pregunta.
-2. El sistema valida la entrada para detectar si está vacía o ambigua.
-3. El router decide si la consulta debe resolverse con contexto local, externo o ambos.
-4. El agente recupera documentos o fragmentos relevantes.
-5. Se combina el contexto recuperado con la intención de la consulta.
-6. Se genera la respuesta final.
-7. Se guarda la interacción en memoria por sesión.
-8. La siguiente pregunta puede reutilizar ese historial.
-
-Este flujo hace que el sistema se comporte de manera más parecida a un agente real que a una simple búsqueda de texto.
+Además, el sistema cuenta con pruebas automatizadas para validar el comportamiento real del flujo, la memoria, la recuperación local, la recuperación externa y la continuidad de conversación.
 
 ---
 
-## 11. Estructura de archivos del proyecto
+## 9. Benchmark de recuperación
 
-El proyecto principal está organizado en los siguientes módulos:
+El proyecto incorpora un enfoque de benchmark formal para evaluar la calidad de la recuperación semántica. Este componente permite medir la efectividad del sistema de forma reproducible.
 
-- `src/agente.py`: lógica principal del agente, validación del estado, enrutamiento, memoria y grafo de ejecución.
-- `src/retrieval.py`: almacenamiento vectorial y búsqueda semántica.
-- `src/embeddings.py`: generación de embeddings y comparación por similitud.
-- `src/ingesta.py`: extracción, limpieza y fragmentación de texto.
-- `src/generacion.py`: producción de respuesta final.
-- `tests/test_daikoku.py`: validaciones del comportamiento del proyecto.
-- `README.md`: documentación general y guía de uso.
-- `docs/checklist_evaluacion_progreso.md`: seguimiento de la rúbrica.
+Las métricas principales que se manejan son:
 
-Aunque cada archivo tiene una tarea específica, el sistema funciona como una cadena completa: ingestión → representación → recuperación → razonamiento → respuesta.
+- result_count
+- top_score
+- avg_score
+- relevant
+- index_summary
+- backend
+- latency_ms
 
----
+También incluye comparaciones por:
 
-## 12. Validación y pruebas
+- backend activo
+- `top_k`
+- tamaño de chunk
+- flujo de consultas repetidas
 
-El proyecto incorpora pruebas para comprobar el comportamiento real del agente, no solo su estructura. Estas pruebas cubren varias áreas:
-
-- lógica del router
-- recuperación local
-- recuperación externa
-- historial persistente
-- continuidad de conversación
-- manejo de preguntas vacías o ambiguas
-- tratamiento de documentos no válidos
-- comportamiento sin contexto
-
-La evidencia actual del proyecto confirma que los principales comportamientos críticos del agente responden bien a la rúbrica y funcionan de forma estable.
+Esto convierte la recuperación semántica en una capa medible y comparable, y la acerca a estándares metodológicos más formales.
 
 ---
 
-## 13. Estado de cumplimiento frente a la rúbrica
+## 10. Ejecución y validación
 
-El proyecto cumple con los requisitos principales de la propuesta: arquitectura formal, separación de nodos, validación del estado, manejo de errores, memoria por sesión y documentación técnica. Además, el sistema demuestra que la solución está alineada con el enfoque propuesto por el profesor y con los estándares de un proyecto académico con agentes de IA.
+El proyecto corre en un entorno virtual del repositorio y se valida mediante la suite de pruebas en `tests/test_daikoku.py`.
 
-### Alineación con la rúbrica
-- Estado formal del agente: cumplido
-- Estructura del grafo y responsabilidades: cumplido
-- Validación del flujo: cumplido
-- Documentación de nodos e infraestructura: cumplido
-- Recuperación local y semántica: cumplido
-- Recuperación externa: cumplido
-- Memoria del agente: cumplido
-- Manejo de fallos y robustez: cumplido
-- Documentación y explicación del proyecto: cumplido
+### Ejecución recomendada
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m unittest tests.test_daikoku -q
+```
+
+### Ruta alternativa cuando el terminal del editor falla
+
+```python
+import subprocess
+py = r"C:\Users\admin\Documents\GitHub\Daikoku\.venv\Scripts\python.exe"
+subprocess.run([py, "-m", "unittest", "tests.test_daikoku", "-q"], cwd=r"C:\Users\admin\Documents\GitHub\Daikoku")
+```
 
 ---
 
-## 14. Conclusión
+## 11. Estado final de cumplimiento
 
-Daikoku representa un ejemplo completo de un agente académico basado en RAG, con recuperación semántica, memoria, contexto externo y flujo modular. Su diseño permite entender tanto la lógica técnica como la utilidad práctica del sistema.
+El proyecto se encuentra en un estado muy sólido para entrega académica. Tiene base funcional, arquitectura modular, flujo con routing, recuperación local y externa, memoria persistente, observabilidad y validación.
 
-El proyecto no se limita a ser una demostración superficial de IA: se enfoca en una solución estructurada, validada y explicable. Esto lo hace adecuado para uso académico, documentación técnica, presentación ante evaluadores y ampliación futura.
+Su fortaleza principal es la combinación de:
 
-La combinación de arquitectura clara, pruebas, memoria persistente y flujo de recuperación consolidan una base sólida para un sistema de IA útil, robusto y comprensible incluso para personas que se están iniciando en estos conceptos.
+- estructura del agente clara
+- orientación académica y documental
+- evidencia recuperada en la respuesta final
+- calidad semántica y validación del flujo
+- trazabilidad por sesión y ejecución
+
+La diferencia respecto a un sistema completamente industrial aún queda en madurez operativa y exportación formal de métricas comparativas, pero el proyecto ya está muy cercano a la calidad esperada para una entrega final de nivel académico alto.
+
+---
+
+## 12. Conclusión
+
+Daikoku ya no es un prototipo básico de RAG. Es un proyecto con estructura, flujo, memoria, trazabilidad, validación y propósito definido. Su enfoque combina evidencia documental, recuperación semántica y continuidad de conversación en un flujo ordenado y explicable.
+
+El proyecto se presenta como una solución sólida para consultar documentos académicos con apoyo documental, trazabilidad y mejor calidad de respuesta, y se encuentra muy bien alineado con una entrega final técnica y académica.

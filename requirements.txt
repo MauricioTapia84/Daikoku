@@ -1,6 +1,7 @@
 markitdown
 pypdf
 sentence-transformers
+faiss-cpu
 chromadb
 gradio
 mistralai

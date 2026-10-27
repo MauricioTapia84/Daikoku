@@ -2,20 +2,353 @@
 
 ## Descripción general
 
-Daikoku es un asistente académico inteligente orientado a responder preguntas a partir de documentos propios del usuario, combinando recuperación semántica local y contexto externo de Wikipedia. La idea principal es permitir que un estudiante, investigador o docente consulte material académico sin tener que revisar manualmente todo el contenido de un archivo largo.
+Daikoku es un asistente académico inteligente orientado a responder preguntas sobre documentos propios del usuario, combinando recuperación semántica local, memoria contextual y contexto externo. La idea principal es permitir que un estudiante, investigador o docente consulte material académico sin tener que revisar manualmente todo el contenido de un archivo largo.
+
+Este proyecto se define como un caso de uso académico y documental: asistente de consulta para material universitario, apuntes, resúmenes, bibliografía y documentos de estudio. La intención del sistema es apoyar la comprensión del contenido, no reemplazar la lectura crítica de la fuente original.
 
 El sistema integra varias capas:
 
 - ingreso de documentos y textos
 - extracción y normalización de contenido
-- almacenamiento vectorial local
+- almacenamiento vectorial local con metadata documental enriquecida
 - recuperación por similitud semántica
 - orquestación con LangGraph
 - memoria de sesión por conversación
+- resumen persistente para memoria a largo plazo
+- trazabilidad y auditoría del flujo
 - respuesta final contextualizada
-- interfaz de uso con Gradio
 
 En su versión actual, el proyecto funciona como un agente RAG (Retrieval-Augmented Generation) con router, recuperación local, recuperación externa y finalización de la respuesta. Este enfoque lo acerca a un patrón de agente profesional con flujo estructurado y decisiones explícitas.
+
+## Estado actual y siguiente paso
+
+La implementación ya consolidó los componentes clave del flujo académico del agente: estado formal con validación, memoria por sesión, router y finalizer, recuperación local y externa, trazabilidad por evento y métricas básicas de calidad de recuperación. Además, el proyecto incorporó la validación de flujo más precisa para rutas externas válidas y un ajuste explícito del finalizador para que la respuesta final esté apoyada por evidencia documental y por el dominio académico definido.
+
+En este momento, el proyecto ya tiene una política de backend definida:
+
+- FAISS se usa como backend vectorial principal cuando está disponible
+- Chroma queda como alternativa opcional o experimental
+- el backend activo se expone en metadata y observabilidad
+- la capa local mantiene un fallback robusto basado en similitud semántica y solapamiento léxico
+- la respuesta final incorpora evidencia recuperada y un dominio documental más preciso
+
+El bloque actual de mejora técnica es el benchmark formal y la observabilidad de producción: se requiere comparar resultados por backend, top_k, chunk_size y latencia, y mantener una trazabilidad más formal de cada ejecución del flujo.
+
+En esta etapa, la prioridad es cerrar la madurez operativa del sistema con medición de calidad, métricas reproducibles y validación del comportamiento real del agente bajo distintos escenarios académicos.
+
+---
+
+## Arquitectura formal del agente
+
+La implementación actual está pensada para acercarse a la estructura de un sistema de agentes académico y reproducible, con separación clara entre componentes:
+
+### 1. Estado del grafo
+
+El estado del agente queda definido en `AgentState`, con validación estricta y campos operativos para:
+
+- pregunta del usuario
+- ruta seleccionada por el router
+- contexto local y externo
+- historial de conversación
+- resumen de memoria persistente
+- `trace_id` para trazabilidad
+- `metadata` del flujo de ejecución
+
+Esto formaliza el flujo para que cada nodo reciba un contrato conocido y no dependa de datos inconsistentes.
+
+### 2. Memoria de corto plazo (STM)
+
+La `ShortTermMemory` mantiene el historial reciente de la sesión y evita que la conversación crezca sin control. La memoria activa conserva la continuidad del diálogo más inmediato.
+
+### 3. Memoria de largo plazo (LTM)
+
+La `LongTermMemory` sintetiza el historial pasado en un resumen compacto, lo que permite conservar el contexto conceptual sin saturar la ventana de trabajo del agente. Esto aproxima el comportamiento de una memoria persistente y resumida, muy cercana a la lógica de un sistema más formal y académico.
+
+### 4. Índice vectorial local
+
+El almacenamiento vectorial local en `VectorStore` actúa como índice semántico de documentos. Se distingue claramente entre:
+
+- texto documental original
+- metadata asociada al documento
+- relevancia calculada por similitud y solapamiento léxico
+- resumen de la colección para auditoría y evaluación
+
+Este patrón hace más explícito el modelo de recuperación.
+
+### 5. Trazabilidad y auditoría
+
+Cada decisión del grafo queda registrada en logs con eventos como:
+
+- `router_decision`
+- `local_retrieval`
+- `external_retrieval`
+- `finalizer_output`
+
+Esto permite no solo ejecutar el agente, sino también explicarlo y revisarlo como un sistema observable y verificable.
+
+---
+
+## Diferencia entre routing, retrieval, memory y final answer
+
+### Router
+
+El router decide si la consulta debe dirigirse a contexto local o externo. Esta capa no responde la pregunta; solo elige la estrategia de recuperación más adecuada.
+
+### Retrieval
+
+La capa de recuperación obtiene documentos o fragmentos relevantes. Existen dos tipos principales:
+
+- local: material documentado que ya ha sido ingestado
+- externo: información complementaria, en este caso desde Wikipedia
+
+### Memory
+
+La memoria es la capa que preserva el hilo de la conversación. Tiene dos niveles:
+
+- STM: historial acotado y reciente
+- LTM: resumen persistente del contexto y las interacciones previas
+
+### Final answer
+
+El `finalizer` es quien sintetiza la respuesta final a partir del contexto recuperado y del estado validado. Su tarea es producir una respuesta útil, contextualizada y consistente con la sesión actual.
+
+---
+
+## Metadata documental enriquecida
+
+Se ha reforzado el uso de metadata documental con campos como:
+
+- `source`
+- `title`
+- `chunk_id`
+- `document_type`
+- `ingested_at`
+
+Esto permite que cada fragmento tenga mejor trazabilidad, identificación y explicación dentro del flujo de recuperación semántica.
+
+---
+
+## Módulos principales del agente
+
+El agente está dividido en cuatro bloques funcionales principales:
+
+- `router`: toma la decisión inicial sobre si la consulta debe resolverse con contexto local o externo.
+- `retrieve_context`: busca fragmentos relevantes en el corpus del usuario usando similitud semántica.
+- `retrieve_external`: consulta una fuente externa, normalmente Wikipedia, para complementar la respuesta cuando la pregunta es conceptual o no está cubierta por el material local.
+- `finalizer`: compone la respuesta final, persiste el historial y prepara la salida para el usuario.
+
+Además, el sistema dispone de:
+
+- `VectorStore`: índice local con embeddings y metadata enriquecida
+- `AgentState`: estructura formal que valida el flujo entre nodos
+- `ShortTermMemory`: historial reciente por sesión
+- `LongTermMemory`: resumen persistente de la conversación
+- `trace_id`: identificador de auditoría por ejecución
+- `generate_answer`: función que compone la respuesta final con contexto recuperado
+- `retrieval_mode` y `tool_name`: metadatos explícitos del camino elegido por el router
+- `memory_summary`: resumen compacto de la conversación, separado de la memoria activa de corto plazo
+
+---
+
+## Flujo de ejecución
+
+### 1. Carga de documentos
+
+El usuario puede:
+
+- añadir documentos al sistema mediante la API del agente
+- usar la interfaz Gradio e ingresar contenido adicional por línea
+- invocar `agent.ingest_file()` o `agent.ingest_files()` desde código
+
+### 2. Recuperación local
+
+Cuando el usuario hace una consulta, el sistema:
+
+- transforma la pregunta en un vector
+- compara la consulta contra los documentos ya indexados
+- selecciona los fragmentos más relevantes
+
+### 3. Enrutamiento
+
+El agente decide si la consulta debe ir por:
+
+- contexto local si hay documentos relevantes
+- contexto externo si la pregunta es conceptual o no tiene correspondencia local
+
+Esto se hace en el nodo `router` del grafo de LangGraph.
+
+### 4. Recuperación externa
+
+Si el sistema decide usar contexto externo, consulta la API de Wikipedia en español o inglés y extrae resúmenes breves relevantes para la consulta.
+
+### 5. Finalización
+
+El nodo `finalizer`:
+
+- combina contexto interno + externo
+- genera la respuesta final
+- agrega la interacción al historial de la sesión
+- persiste la memoria resumida y la traza de ejecución
+
+---
+
+## Caso de uso del proyecto
+
+Daikoku está pensado como asistente académico para documentos de estudio, apuntes, textos de referencia y material docente. Su dominio principal es la consulta eficiente sobre documentación académica, no un dominio clínico o empresarial específico.
+
+Esto es importante porque define una especialización real, aunque más general que el ejemplo del profesor: la intención del sistema es servir como agente de estudio y recuperación documental para escenarios universitarios y de investigación.
+
+---
+
+## Observabilidad y trazabilidad en producción
+
+La arquitectura del sistema incluye trazas por evento para mantener observabilidad básica del flujo:
+
+- decisión del router
+- contexto local recuperado
+- contexto externo recuperado
+- finalización de respuesta
+- persistencia de sesión
+
+Estas trazas permiten auditar el comportamiento del agente sin necesidad de instrumentar todo el código a mano, y se vuelven útiles al comparar ejecuciones del mismo caso de uso en distintas sesiones.
+
+---
+
+## Evaluación formal de calidad de recuperación
+
+La recuperación semántica debe evaluarse de forma sistemática. Para ello, el proyecto incorpora una mínima batería de validación de calidad a través de evaluaciones de consulta, con métricas como:
+
+- `result_count`
+- `top_score`
+- `avg_score`
+- `relevant`
+- `index_summary`
+
+La metodología es útil para comprobar si la recuperación está respondiendo efectivamente a la intención del usuario y si la colección local tiene suficiente calidad para sustentar la respuesta final.
+
+---
+
+## Cómo ejecutar el proyecto
+
+### 1. Crear y activar el entorno virtual
+
+Desde la raíz del proyecto:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+Si el terminal del editor está en modo Python/REPL y no reconoce comandos de shell, usa esta ruta alternativa desde Python:
+
+```python
+import subprocess
+py = r"C:\Users\admin\Documents\GitHub\Daikoku\.venv\Scripts\python.exe"
+subprocess.run([py, "-m", "pip", "install", "-r", "requirements.txt"], cwd=r"C:\Users\admin\Documents\GitHub\Daikoku")
+```
+
+### 2. Instalar dependencias
+
+```powershell
+pip install -r requirements.txt
+```
+
+### 3. Ejecutar la suite de pruebas
+
+```powershell
+python -m unittest tests.test_daikoku -q
+```
+
+Si el terminal del editor falla, usa esta ejecución desde Python:
+
+```python
+import subprocess
+py = r"C:\Users\admin\Documents\GitHub\Daikoku\.venv\Scripts\python.exe"
+subprocess.run([py, "-m", "unittest", "tests.test_daikoku", "-q"], cwd=r"C:\Users\admin\Documents\GitHub\Daikoku")
+```
+
+### 4. Ejecutar un ejemplo básico del agente
+
+```python
+from src.agente import DaikokuAgent
+
+agent = DaikokuAgent()
+agent.add_documents([
+    "Neural networks learn patterns from data using layers and weights.",
+    "Machine learning uses examples to detect patterns and make predictions.",
+])
+
+print(agent.answer("What are neural networks?", session_id="demo_session"))
+```
+
+### 5. Nota sobre el terminal en VS Code
+
+Si el terminal activo del editor parece interpretar comandos como Python en vez de shell, se recomienda abrir una terminal nueva en PowerShell o ejecutar la misma lógica con `subprocess` desde Python. Esa ruta es más fiable en esta sesión.
+
+---
+
+## Diagrama del flujo general del sistema
+
+```mermaid
+flowchart TD
+    A[Usuario pregunta] --> B[router]
+    B --> C{¿Hay contexto local relevante?}
+    C -->|Sí| D[retrieve_context]
+    C -->|No| E[retrieve_external]
+    D --> F[finalizer]
+    E --> F
+    F --> G[Respuesta final + memoria persistente + trazabilidad]
+```
+
+---
+
+## Estructura del repositorio
+
+```text
+Daikoku/
+├── README.md
+├── requirements.txt
+├── src/
+│   ├── agente.py
+│   ├── embeddings.py
+│   ├── generacion.py
+│   ├── ingesta.py
+│   └── retrieval.py
+├── tests/
+│   ├── test_daikoku.py
+│   └── ejemplos/
+│       └── preguntas_prueba.txt
+├── docs/
+│   ├── benchmark_retrieval.md
+│   ├── observabilidad_produccion.md
+│   └── (material de apoyo del proyecto)
+└── .venv/   (si se crea localmente)
+```
+
+---
+
+## Validación y pruebas
+
+La validación del sistema se realiza con pruebas unitarias y de integración automatizadas en `tests/test_daikoku.py`. Estas pruebas cubren el flujo completo del agente y sirven como evidencia de que cada componente funciona de forma consistente en condiciones reales.
+
+### Benchmark formal y comparativo
+
+El proyecto incluye evaluaciones comparativas para:
+
+- backend activo: `compare_backends(...)`
+- top_k: `compare_top_k(...)`
+- tamaños de chunk: `compare_chunk_sizes(...)`
+- consultas repetidas: `benchmark_retrieval(...)`
+
+Estas comparaciones permiten medir calidad, latencia y estabilidad del índice con la misma batería de consultas del dominio académico.
+
+### Observabilidad de producción
+
+El flujo del agente registra trazas por sesión mediante `trace_id` y `session_id`, junto con eventos en cada nodo del grafo. Esto permite verificar la ruta elegida por el router, la fuente del contexto, la memoria usada y la respuesta final generada.
+
+La documentación de observabilidad se encuentra en [docs/observabilidad_produccion.md](docs/observabilidad_produccion.md).
+
+### Casos validados
 
 ---
 
@@ -140,6 +473,10 @@ Además, el sistema dispone de:
 - `AgentState`: estructura formal que valida el flujo entre nodos
 - `session_memory`: historial persistente por `session_id`
 - `generate_answer`: función que compone la respuesta final con contexto recuperado
+- `retrieval_mode` y `tool_name`: metadatos explícitos del camino elegido por el router, para hacer el flujo más auditable
+- `memory_summary`: resumen compacto de la conversación, separado de la memoria activa de corto plazo
+
+La diferencia entre memoria activa y resumen persistente se hace explícita para alinear el proyecto con el enfoque académico del profesor: el historial corto conserva el hilo reciente, mientras que el resumen sirve como memoria de contexto más estable y compacta.
 
 ---
 

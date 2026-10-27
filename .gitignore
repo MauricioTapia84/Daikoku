@@ -49,5 +49,18 @@ data/
 # Gradio / local runtime artifacts
 .gradio/
 
+# Deliverable artifacts that should not be tracked unless intentionally exported
+*.docx
+*.pdf
+
+# Local reference material not required for the final delivery
+Ejemplos profesor/
+**/Ejemplos profesor/**
+**/Ejemplos profesor/*
+Ejemplos profesor/**
+Ejemplos profesor
+**/pauta/**
+docs/pauta/
+
 # Optional: keep project docs tracked
 # docs/

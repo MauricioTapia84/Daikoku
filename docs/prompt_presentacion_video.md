@@ -1,178 +1,124 @@
-# Prompt para IA: presentación del proyecto Daikoku
+# Prompt final para presentación del video de Daikoku
 
-Eres un experto en presentaciones técnicas, pitch de proyectos de IA y storytelling para evaluaciones académicas. Tu tarea es crear una presentación de video y una estructura de diapositivas para explicar el proyecto Daikoku a un público amplio, incluyendo personas sin experiencia técnica.
+Eres un experto en presentaciones técnicas y storytelling para proyectos de IA. Tu tarea es preparar un material profesional para presentar Daikoku a una audiencia mixta: profesores, evaluadores y compañeros con distinto nivel técnico.
 
 ## Contexto del proyecto
 
 Proyecto: Daikoku
-Tipo: asistente académico basado en inteligencia artificial
-Tecnología principal: LangGraph + RAG + embeddings + memoria por sesión
-Objetivo: ayudar a estudiantes y usuarios a consultar material académico, documentos y apuntes sin leer manualmente todo el contenido.
+Tipo: asistente académico para consulta documental
+Enfoque principal: RAG + LangGraph + embeddings + memoria por sesión + recuperación externa
+Objetivo: ayudar a usuarios a consultar material académico de forma inteligente, contextualizada y con evidencia documental.
 
-## Idea central del proyecto
+## Idea central
 
-Daikoku es un agente académico que permite responder preguntas sobre documentos propios del usuario usando recuperación semántica local y, cuando hace falta, contexto externo. El sistema no responde solo con el conocimiento general del modelo, sino que primero busca evidencia en el material documentado del usuario y luego compone la respuesta final de forma contextualizada.
+Daikoku no es un simple chatbot: es un agente académico orientado a documentos. Responde preguntas usando evidencia recuperada del corpus del usuario y, cuando es necesario, complementa con información externa. El sistema combina recuperación semántica, orquestación por grafo, memoria por sesión y trazabilidad de cada paso.
 
-## Arquitectura clave
-
-- Interfaz de usuario con Gradio
-- Ingesta de documentos y textos
-- Extracción y normalización de contenido
-- Generación y almacenamiento de embeddings
-- Búsqueda vectorial local con similitud semántica
-- Enrutamiento con LangGraph
-- Recuperación local y externa
-- Memoria por sesión
-- Finalización y respuesta final
-
-## Componentes del sistema que deben explicarse
-
-1. Qué es un RAG y por qué se usa en este proyecto
-2. Qué es un embedding
-3. Qué hace el router
-4. Qué hace la recuperación local
-5. Qué hace la recuperación externa y la API de Wikipedia
-6. Qué es la memoria por sesión
-7. Qué hace el finalizador
-8. Por qué el proyecto es útil para estudiantes y docentes
-9. Cómo se valida el sistema con pruebas y qué resultados tiene
-
-## Objetivo de la presentación
-
-La presentación debe:
-- explicar el problema de forma clara
-- mostrar cómo funciona la solución técnica
-- describir la arquitectura y los módulos
-- demostrar valor académico y práctico
-- convencer de que el proyecto tiene una base sólida y está alineado con la rúbrica
-
-## Audiencia
+## Público objetivo
 
 - profesores
-- compañeros de curso
 - evaluadores académicos
-- personas con poco conocimiento técnico
+- compañeros con distinto nivel técnico
+- personas interesadas en IA aplicada a documentos y estudio
 
-## Estilo de la presentación
+## Estilo de presentación
 
-- clara
-- concisa
 - profesional
-- didáctica
-- con lenguaje técnico pero explicando conceptos de forma simple
-- con énfasis en valor real del sistema
+- claro y didáctico
+- riguroso pero accesible
+- orientado a demostrar valor real y arquitectura técnica sólida
 
-## Recomendación de formato de video
+## Duración sugerida
 
-El video debe durar entre 3 y 5 minutos.
-Debe tener una voz en off clara, con ritmo natural, y una narrativa que avance desde el problema hasta la solución.
+3 a 5 minutos, con una narrativa ordenada y visual limpia.
 
-## Estructura sugerida para el video
+## Estructura recomendada del video
 
-### Introducción (15-20 segundos)
-- Presentar el problema: muchos documentos y mucha información dispersa.
-- Explicar que la solución es un asistente que ayuda a responder preguntas con base documental.
+### 1. Introducción (15-20 segundos)
+Plantear el problema de manejar demasiados documentos y mucha información dispersa. Mostrar la necesidad de un asistente que comprenda el contexto y responda con evidencia.
 
-### Problema y necesidad (20-30 segundos)
-- Explicar que las personas no tienen tiempo de leer todo.
-- Mostrar la necesidad de un sistema que entienda texto, recupere información relevante y responda con contexto.
+### 2. Problema y necesidad (20-30 segundos)
+Explicar la diferencia entre responder sin evidencia y responder con contexto real. Presentar el caso de uso académico en documentos universitarios.
 
-### Solución propuesta (30-45 segundos)
-- Explicar que Daikoku es un agente inteligente basado en RAG.
-- Describir la idea central: consulta del usuario, recuperación de evidencia, respuesta contextualizada.
+### 3. Solución propuesta (30-45 segundos)
+Explicar que Daikoku es un agente que recupera contexto relevante, decide si necesita apoyo externo y responde con base documental.
 
-### Arquitectura técnica (45-60 segundos)
-- Explicar el flujo: ingreso de documentos, embeddings, búsqueda, router, recuperación local, recuperación externa, finalizer.
-- Mostrar simple diagrama o representación visual.
+### 4. Arquitectura técnica (45-60 segundos)
+Mostrar los nodos principales: router, tool layer, retrieval, memory, observability y finalizer. Explicar cómo decide usar contexto local o externo.
 
-### Módulos clave (30-45 segundos)
-- Router
-- Recuperación local
-- Recuperación externa
-- Memoria por sesión
+### 5. Componentes clave (30-45 segundos)
+- embeddings
+- vector store
+- memoria por sesión
+- recuperación externa
+- observabilidad del flujo
 
-### Valor y beneficios (20-30 segundos)
-- Ahorro de tiempo
-- Respuestas más confiables
-- Mejor uso del material académico
-- Continuidad de conversación
+### 6. Validación y robustez (30-45 segundos)
+Explicar que el sistema maneja preguntas vacías, ambiguas, historial persistente y trazas por ejecución. Mencionar pruebas y benchmark de recuperación.
 
-### Validación y resultados (30-45 segundos)
-- Explicar que hubo pruebas de validación del router, sesión, contexto, manejo de errores, etc.
-- Mostrar la idea de que el proyecto está funcionando y cumple con el esquema de evaluación.
+### 7. Valor del proyecto (20-30 segundos)
+Resaltar ahorro de tiempo, mayor precisión documental, continuidad de conversación y mejor comprensión del material.
 
-### Cierre (20-30 segundos)
-- Resumen final del proyecto
-- Enfatizar que es una base sólida para un sistema académico real y extensible
+### 8. Cierre (20-30 segundos)
+Hacer un resumen final del proyecto y enfatizar que es una base sólida, extensible y técnica.
 
-## Estructura sugerida para la presentación en PowerPoint
+## Estructura sugerida de diapositivas
 
 ### Diapositiva 1: Título
-- Título: Daikoku
-- Subtítulo: Asistente académico con IA para consultar documentos
-- Logo o imagen de IA + documentos + estudio
+- Daikoku
+- Asistente académico para consulta de documentos
 
 ### Diapositiva 2: Problema
-- Documentos largos y dispersos
-- Dificultad para encontrar información relevante
-- Necesidad de una herramienta que comprenda contexto y responda de forma útil
+- documentación dispersa
+- dificultad para localizar información relevante
+- necesidad de apoyo para estudiar y consultar material académico
 
-### Diapositiva 3: Solución propuesta
-- Daikoku como asistente académico
-- Enfoque basado en RAG
-- Recuperación de contexto relevante + respuesta final
+### Diapositiva 3: Solución
+- recuperación semántica
+- respuesta con evidencia documental
+- memoria y contexto externo
 
-### Diapositiva 4: Arquitectura del sistema
-- Diagrama del flujo del agente
-- Mostrar router, local retrieval, external retrieval, finalizer
+### Diapositiva 4: Arquitectura
+- diagrama del flujo del agente
+- router, retrieval, memory, finalizer
 
-### Diapositiva 5: Componentes clave
-- Embeddings
-- Búsqueda semántica
-- Memoria por sesión
-- Herramienta externa (Wikipedia)
+### Diapositiva 5: Tool layer y flujo de decisiones
+- buscar_documentos
+- buscar_en_wikipedia
+- resolver_ambigüedad
+- resumir_historial
 
-### Diapositiva 6: Flujo de funcionamiento
-- Paso a paso del uso del sistema
-- Ejemplo de pregunta y respuesta
+### Diapositiva 6: Recuperación semántica y vector store
+- embeddings
+- similitud
+- FAISS / fallback
 
-### Diapositiva 7: Validación y pruebas
-- Sección de pruebas del proyecto
-- Casos cubiertos: router, contexto local, contexto externo, memoria, error, continuidad, dudas vacías
+### Diapositiva 7: Memoria y observabilidad
+- sesión persistente
+- resumen del historial
+- trazas y métricas para auditoría
 
-### Diapositiva 8: Resultados y cierre
-- Qué aporta el proyecto
-- Qué lo hace especial
-- Conclusión final y agradecimiento
+### Diapositiva 8: Validación y resultados
+- pruebas del agente
+- benchmark de recuperación
+- robustez del sistema
 
-## Guía para la narración del video
+### Diapositiva 9: Valor y cierre
+- utilidad académica
+- potencial de extensión
+- conclusión del proyecto
 
-El narrador debe seguir este patrón:
-1. Presentar el contexto
-2. Explicar el problema
-3. Presentar la solución
-4. Describir la arquitectura
-5. Mostrar cómo funciona en la práctica
-6. Explicar validación y valor del proyecto
-7. Cerrar con impacto
+## Guion de voz en off sugerido
+
+"Daikoku es un asistente académico para consultar documentos de manera inteligente. En lugar de responder solo con conocimiento general, el sistema recupera evidencia del corpus del usuario, decide si necesita contexto externo y genera respuestas con base documental. La arquitectura combina un flujo con LangGraph, recuperación semántica, memoria por sesión y observabilidad del proceso. Esto permite que el sistema no solo responda, sino que lo haga de forma trazable, contextualizada y útil para estudiantes, docentes y evaluadores."
 
 ## Reglas importantes
 
-- No usar demasiada jerga sin explicar
-- Explicar conceptos clave en lenguaje simple
-- Mantener el foco en la utilidad práctica
-- Definir claramente la diferencia entre contexto local y contexto externo
-- Enfatizar que el proyecto tiene una base técnica y una lógica clara de evaluación
+- usar lenguaje claro y técnico, pero explicando cada concepto
+- no abusar de jerga sin contexto
+- enfatizar la diferencia entre contexto local y contexto externo
+- hablar de validación, trazabilidad y utilidad académica
+- dejar la presentación sólida, moderna y alineada con un proyecto de IA con rigor técnico
 
-## Resultado final que debe entregar la IA
+## Prompt final para IA generadora
 
-La IA debe generar:
-- un guion de voz en off
-- una estructura de diapositivas
-- una guía visual para la presentación
-- una narrativa más natural para video
-- una versión más institucional para evaluación académica
-
-## Prompt final para entregar a la IA
-
-Genera una presentación técnica y didáctica del proyecto Daikoku, diseñada para un video de 3 a 5 minutos y para una presentación en PowerPoint. Debe explicar el problema, la solución propuesta, la arquitectura del sistema, los conceptos clave (RAG, embeddings, router, memoria, contexto externo), la utilidad del proyecto y la validación realizada. La audiencia es mixta: profesores, evaluadores y compañeros con diferente nivel técnico. Usa un lenguaje claro, profesional y didáctico. Incluye: guion de voz en off, estructura de diapositivas, mensajes visuales, tiempos de cada sección y tono de presentación. Haz que la presentación se vea sólida, moderna y orientada a una evaluación académica.
+Genera una presentación técnica y didáctica del proyecto Daikoku, con enfoque académico y de evaluación. Explica el problema, la solución propuesta, la arquitectura del sistema, la capa de herramientas, el router, la recuperación local y externa, el vector store, la memoria, la observabilidad y la validación. El público es mixto: profesores, evaluadores y compañeros con distinto nivel técnico. Usa lenguaje claro, profesional y didáctico. Incluye: guion de voz en off, estructura de diapositivas, mensajes visuales, tiempos estimados por sección y tono de presentación. Haz que la presentación se vea robusta, moderna y alineada con un proyecto de IA con base académica y rigor técnico.
